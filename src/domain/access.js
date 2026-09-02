@@ -3,6 +3,7 @@ export function normalizeAllowedDomains(value) {
     return value.map((item) => String(item).trim().toLowerCase()).filter(Boolean);
   }
   return String(value || '')
+    .replace(/^VITE_ALLOWED_EMAIL_DOMAINS\s*=\s*/i, '')
     .split(',')
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
