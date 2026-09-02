@@ -6,6 +6,7 @@ import {
   resetLessonProgress,
 } from '../domain/progress.js';
 import { hasWatchedVideoLength } from '../domain/videoProgress.js';
+import { updateAssignmentStatus } from './assignmentService.js';
 
 function requireDb() {
   if (!db) throw new Error('Firebase is not configured.');
@@ -151,11 +152,14 @@ export async function listProgressForUser(uid) {
 export async function resetCourseProgress(uid, courseId) {
   requireDb();
   await db.collection('progress').doc(progressId(uid, courseId)).delete();
+  await updateAssignmentStatus(uid, courseId, 'assigned');
 }
 
 export async function resetStudentLessonProgress({ uid, courseId, lessonId, lessonIds = [] }) {
   requireDb();
   const progress = await getProgress(uid, courseId);
   const nextProgress = resetLessonProgress(progress, lessonId, lessonIds);
-  return writeProgress(uid, courseId, nextProgress);
+  const savedProgress = await writeProgress(uid, courseId, nextProgress);
+  await updateAssignmentStatus(uid, courseId, savedProgress.percentComplete >= 100 ? 'completed' : 'in_progress');
+  return savedProgress;
 }

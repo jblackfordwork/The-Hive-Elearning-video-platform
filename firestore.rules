@@ -70,7 +70,7 @@ service cloud.firestore {
           && request.resource.data.courseId == resource.data.courseId
           && isAssigned(resource.data.courseId)
           && coursePublished(resource.data.courseId));
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /attempts/{attemptId} {
