@@ -29,3 +29,18 @@ export function isLessonUnlocked(lessons = [], lessonId, completedLessonIds = []
   const completed = new Set(completedLessonIds);
   return ordered.slice(0, targetIndex).every((lesson) => completed.has(lesson.id));
 }
+
+export function resetLessonProgress(progress = {}, lessonId, lessonIds = []) {
+  const lessons = { ...(progress.lessons || {}) };
+  delete lessons[lessonId];
+  const completedLessonIds = (progress.completedLessonIds || []).filter((id) => id !== lessonId);
+
+  return {
+    ...progress,
+    currentLessonId: lessonId,
+    completedLessonIds,
+    percentComplete: calculateCourseProgress(lessonIds, completedLessonIds),
+    completedAt: null,
+    lessons,
+  };
+}

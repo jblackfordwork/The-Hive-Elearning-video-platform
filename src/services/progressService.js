@@ -1,5 +1,10 @@
 import { db, serverTimestamp } from '../lib/firebase.js';
-import { calculateCourseProgress, canCompleteLesson, getNextLesson } from '../domain/progress.js';
+import {
+  calculateCourseProgress,
+  canCompleteLesson,
+  getNextLesson,
+  resetLessonProgress,
+} from '../domain/progress.js';
 import { hasWatchedVideoLength } from '../domain/videoProgress.js';
 
 function requireDb() {
@@ -141,4 +146,16 @@ export async function listProgressForUser(uid) {
   requireDb();
   const snapshot = await db.collection('progress').where('uid', '==', uid).get();
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function resetCourseProgress(uid, courseId) {
+  requireDb();
+  await db.collection('progress').doc(progressId(uid, courseId)).delete();
+}
+
+export async function resetStudentLessonProgress({ uid, courseId, lessonId, lessonIds = [] }) {
+  requireDb();
+  const progress = await getProgress(uid, courseId);
+  const nextProgress = resetLessonProgress(progress, lessonId, lessonIds);
+  return writeProgress(uid, courseId, nextProgress);
 }

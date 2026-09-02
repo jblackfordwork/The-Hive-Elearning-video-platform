@@ -5,6 +5,7 @@ import {
   calculateCourseProgress,
   getNextLesson,
   isLessonUnlocked,
+  resetLessonProgress,
 } from './progress.js';
 
 const lessons = [
@@ -40,4 +41,27 @@ test('only the first lesson or a lesson whose predecessors are complete is unloc
   assert.equal(isLessonUnlocked(lessons, 'l2', ['l1']), true);
   assert.equal(isLessonUnlocked(lessons, 'l3', ['l1']), false);
   assert.equal(isLessonUnlocked(lessons, 'l3', ['l1', 'l2']), true);
+});
+
+test('reset lesson progress removes the lesson and recalculates course progress', () => {
+  const result = resetLessonProgress({
+    completedLessonIds: ['l1', 'l2'],
+    percentComplete: 67,
+    completedAt: new Date('2026-01-01T00:00:00Z'),
+    currentLessonId: 'l3',
+    lessons: {
+      l1: { videoCompleted: true, quizPassed: true },
+      l2: { videoCompleted: true, quizPassed: true, watchedSeconds: 120 },
+      l3: { watchedSeconds: 30 },
+    },
+  }, 'l2', ['l1', 'l2', 'l3']);
+
+  assert.deepEqual(result.completedLessonIds, ['l1']);
+  assert.equal(result.percentComplete, 33);
+  assert.equal(result.completedAt, null);
+  assert.equal(result.currentLessonId, 'l2');
+  assert.deepEqual(result.lessons, {
+    l1: { videoCompleted: true, quizPassed: true },
+    l3: { watchedSeconds: 30 },
+  });
 });

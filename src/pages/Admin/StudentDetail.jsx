@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { getUserProfile } from '../../services/userService';
 import { listAssignmentsForUser } from '../../services/assignmentService';
-import { listProgressForUser } from '../../services/progressService';
+import {
+  listProgressForUser,
+  resetCourseProgress,
+  resetStudentLessonProgress,
+} from '../../services/progressService';
 import { listAttemptsForUser } from '../../services/attemptService';
 import { getCoursesByIds, listLessons } from '../../services/courseService';
 import { formatDuration, hasWatchedVideoLength } from '../../domain/videoProgress';
@@ -15,32 +19,64 @@ export default function StudentDetail() {
   const { uid } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [actionId, setActionId] = useState('');
 
-  useEffect(() => {
-    Promise.all([
+  const load = useCallback(async () => {
+    const [user, assignments, progress, attempts] = await Promise.all([
       getUserProfile(uid),
       listAssignmentsForUser(uid),
       listProgressForUser(uid),
       listAttemptsForUser(uid),
-    ]).then(async ([user, assignments, progress, attempts]) => {
-      const courseIds = [...new Set([
-        ...assignments.map((assignment) => assignment.courseId),
-        ...attempts.map((attempt) => attempt.courseId),
-      ])];
-      const courses = await getCoursesByIds(courseIds);
-      const lessonPairs = await Promise.all(
-        courseIds.map(async (courseId) => [courseId, await listLessons(courseId)]),
-      );
-      setData({
-        user,
-        assignments,
-        progress,
-        attempts,
-        courses,
-        lessonsByCourseId: Object.fromEntries(lessonPairs),
-      });
-    }).catch((err) => setError(err.message));
+    ]);
+    const courseIds = [...new Set([
+      ...assignments.map((assignment) => assignment.courseId),
+      ...attempts.map((attempt) => attempt.courseId),
+    ])];
+    const courses = await getCoursesByIds(courseIds);
+    const lessonPairs = await Promise.all(
+      courseIds.map(async (courseId) => [courseId, await listLessons(courseId)]),
+    );
+    setData({
+      user,
+      assignments,
+      progress,
+      attempts,
+      courses,
+      lessonsByCourseId: Object.fromEntries(lessonPairs),
+    });
   }, [uid]);
+
+  useEffect(() => {
+    load().catch((err) => setError(err.message));
+  }, [load]);
+
+  const runReset = async (id, resetAction) => {
+    setActionId(id);
+    setError('');
+    try {
+      await resetAction();
+      await load();
+    } catch (err) {
+      setError(err.message || 'Unable to reset training progress.');
+    } finally {
+      setActionId('');
+    }
+  };
+
+  const handleResetCourse = async (assignment, courseTitle) => {
+    if (!window.confirm(`Reset all progress for ${courseTitle}? The course will remain assigned.`)) return;
+    await runReset(`course:${assignment.courseId}`, () => resetCourseProgress(uid, assignment.courseId));
+  };
+
+  const handleResetLesson = async (row) => {
+    if (!window.confirm(`Reset progress for ${row.lessonTitle}?`)) return;
+    await runReset(`lesson:${row.courseId}:${row.lessonId}`, () => resetStudentLessonProgress({
+      uid,
+      courseId: row.courseId,
+      lessonId: row.lessonId,
+      lessonIds: data.lessonsByCourseId[row.courseId].map((lesson) => lesson.id),
+    }));
+  };
 
   const courseMap = useMemo(
     () => Object.fromEntries((data?.courses || []).map((course) => [course.id, course])),
@@ -64,6 +100,8 @@ export default function StudentDetail() {
       const durationSeconds = lessonProgress.videoDurationSeconds || 0;
       return {
         id: `${assignment.courseId}_${lesson.id}`,
+        courseId: assignment.courseId,
+        lessonId: lesson.id,
         courseTitle: course?.title || assignment.courseId,
         lessonTitle: lesson.title,
         watchedSeconds,
@@ -105,7 +143,17 @@ export default function StudentDetail() {
                   <StatusBadge status={progress?.percentComplete >= 100 ? 'completed' : assignment.status} />
                 </div>
                 <div className="mt-5"><ProgressBar value={progress?.percentComplete || 0} /></div>
-                <p className="mt-3 text-xs text-slate-500">{progress?.completedLessonIds?.length || 0} lessons completed</p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-slate-500">{progress?.completedLessonIds?.length || 0} lessons completed</p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={actionId === `course:${assignment.courseId}`}
+                    onClick={() => handleResetCourse(assignment, course?.title || assignment.courseId)}
+                  >
+                    <RotateCcw size={14} /> Reset course
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -121,7 +169,7 @@ export default function StudentDetail() {
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <tr><th className="px-5 py-3">Course</th><th className="px-5 py-3">Lesson</th><th className="px-5 py-3">Watched</th><th className="px-5 py-3">Video length</th><th className="px-5 py-3">Status</th></tr>
+              <tr><th className="px-5 py-3">Course</th><th className="px-5 py-3">Lesson</th><th className="px-5 py-3">Watched</th><th className="px-5 py-3">Video length</th><th className="px-5 py-3">Status</th><th className="px-5 py-3"></th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {watchRows.map((row) => (
@@ -131,6 +179,16 @@ export default function StudentDetail() {
                   <td className="px-5 py-4 font-black">{formatDuration(row.watchedSeconds)}</td>
                   <td className="px-5 py-4 text-slate-600">{row.durationSeconds ? formatDuration(row.durationSeconds) : 'Unknown'}</td>
                   <td className="px-5 py-4"><StatusBadge status={row.watchedEnough ? 'completed' : 'assigned'}>{row.watchedEnough ? 'Enough time' : 'Short'}</StatusBadge></td>
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={actionId === `lesson:${row.courseId}:${row.lessonId}`}
+                      onClick={() => handleResetLesson(row)}
+                    >
+                      <RotateCcw size={14} /> Reset
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
