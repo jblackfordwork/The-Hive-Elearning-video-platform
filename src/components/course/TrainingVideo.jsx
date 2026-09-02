@@ -33,6 +33,8 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
   const youtubeFrameRef = useRef(null);
   const htmlVideoRef = useRef(null);
   const completedRef = useRef(completed);
+  const onCompleteRef = useRef(onComplete);
+  const onWatchProgressRef = useRef(onWatchProgress);
   const watchRef = useRef({
     durationSeconds: Number(durationSeconds || 0),
     lastTickAt: null,
@@ -54,6 +56,9 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
     : '';
 
   useEffect(() => { completedRef.current = completed; }, [completed]);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { onWatchProgressRef.current = onWatchProgress; }, [onWatchProgress]);
+
   useEffect(() => {
     watchRef.current.watchedSeconds = Math.max(watchRef.current.watchedSeconds, Number(watchedSeconds || 0));
     watchRef.current.durationSeconds = Math.max(watchRef.current.durationSeconds, Number(durationSeconds || 0));
@@ -67,11 +72,11 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
     const now = Date.now();
     if (!force && now - watchRef.current.lastSavedAt < 10000) return;
     watchRef.current.lastSavedAt = now;
-    onWatchProgress?.({
+    onWatchProgressRef.current?.({
       watchedSeconds: watchRef.current.watchedSeconds,
       durationSeconds: watchRef.current.durationSeconds,
     });
-  }, [onWatchProgress]);
+  }, []);
 
   const tickWatchTime = useCallback(() => {
     const now = Date.now();
@@ -152,7 +157,7 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
               });
               saveWatchProgress(true);
               completedRef.current = true;
-              onComplete?.();
+              onCompleteRef.current?.();
             }
           },
           onError: () => setError('This YouTube video could not be played.'),
@@ -163,7 +168,7 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
       active = false;
       if (player?.destroy) player.destroy();
     };
-  }, [videoType, youtubeId, onComplete, saveWatchProgress, setDuration, setPlaying]);
+  }, [videoType, youtubeId, saveWatchProgress, setDuration, setPlaying]);
 
   if (!parsed) {
     return <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 flex gap-3"><AlertCircle /> This lesson does not have a supported video URL.</div>;
@@ -181,12 +186,12 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
-        ) : <video ref={htmlVideoRef} src={videoSrc} className="h-full w-full" controls onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={(event) => { setDuration(event.currentTarget.duration); setPlaying(false); setWatchState({ watchedSeconds: watchRef.current.watchedSeconds, durationSeconds: watchRef.current.durationSeconds }); saveWatchProgress(true); onComplete?.(); }} />}
+        ) : <video ref={htmlVideoRef} src={videoSrc} className="h-full w-full" controls onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={(event) => { setDuration(event.currentTarget.duration); setPlaying(false); setWatchState({ watchedSeconds: watchRef.current.watchedSeconds, durationSeconds: watchRef.current.durationSeconds }); saveWatchProgress(true); onCompleteRef.current?.(); }} />}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ${completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{completed ? <CheckCircle2 size={17} /> : <Video size={17} />}{completed ? 'Video requirement complete' : 'Watch through the end to unlock the quiz'}</div>
         <div className={`rounded-full px-3 py-1.5 text-sm font-bold ${hasWatchedVideoLength(watchState) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>{formatDuration(watchState.watchedSeconds)} watched{watchState.durationSeconds ? ` / ${formatDuration(watchState.durationSeconds)}` : ''}</div>
-        {isAdmin && !completed && <button type="button" onClick={onComplete} className="hive-secondary-button text-xs">Admin: mark video complete</button>}
+        {isAdmin && !completed && <button type="button" onClick={() => onCompleteRef.current?.()} className="hive-secondary-button text-xs">Admin: mark video complete</button>}
       </div>
       {error && <p className="mt-3 text-sm font-bold text-red-700">{error}</p>}
     </div>
