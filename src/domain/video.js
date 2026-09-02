@@ -33,3 +33,13 @@ export function parseVideoUrl(value) {
 
   return null;
 }
+
+export function getYouTubeEmbedUrl(videoId, origin = '') {
+  const params = new URLSearchParams({
+    enablejsapi: '1',
+    rel: '0',
+    modestbranding: '1',
+  });
+  if (origin) params.set('origin', origin);
+  return `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?${params.toString()}`;
+}

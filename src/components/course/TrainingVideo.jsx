@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Video, AlertCircle } from 'lucide-react';
-import { parseVideoUrl } from '../../domain/video';
+import { getYouTubeEmbedUrl, parseVideoUrl } from '../../domain/video';
 import { addPlaybackSeconds, formatDuration, hasWatchedVideoLength } from '../../domain/videoProgress';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -30,7 +30,7 @@ function loadYouTubeApi() {
 
 export default function TrainingVideo({ videoUrl, completed = false, watchedSeconds = 0, durationSeconds = 0, onComplete, onWatchProgress }) {
   const { isAdmin } = useAuth();
-  const playerHostRef = useRef(null);
+  const youtubeFrameRef = useRef(null);
   const htmlVideoRef = useRef(null);
   const completedRef = useRef(completed);
   const watchRef = useRef({
@@ -49,6 +49,9 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
   const videoType = parsed?.type;
   const youtubeId = parsed?.id;
   const videoSrc = parsed?.url;
+  const youtubeEmbedUrl = youtubeId
+    ? getYouTubeEmbedUrl(youtubeId, typeof window === 'undefined' ? '' : window.location.origin)
+    : '';
 
   useEffect(() => { completedRef.current = completed; }, [completed]);
   useEffect(() => {
@@ -129,16 +132,12 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
   }, [saveWatchProgress, tickWatchTime]);
 
   useEffect(() => {
-    if (videoType !== 'youtube' || !youtubeId || !playerHostRef.current) return undefined;
+    if (videoType !== 'youtube' || !youtubeId || !youtubeFrameRef.current) return undefined;
     let player;
     let active = true;
     loadYouTubeApi().then((YT) => {
-      if (!active || !playerHostRef.current) return;
-      player = new YT.Player(playerHostRef.current, {
-        videoId: youtubeId,
-        width: '100%',
-        height: '100%',
-        playerVars: { rel: 0, modestbranding: 1 },
+      if (!active || !youtubeFrameRef.current) return;
+      player = new YT.Player(youtubeFrameRef.current, {
         events: {
           onReady: (event) => setDuration(event.target.getDuration()),
           onStateChange: (event) => {
@@ -173,7 +172,16 @@ export default function TrainingVideo({ videoUrl, completed = false, watchedSeco
   return (
     <div>
       <div className="overflow-hidden rounded-2xl bg-black shadow-xl aspect-video">
-        {videoType === 'youtube' ? <div ref={playerHostRef} className="h-full w-full" /> : <video ref={htmlVideoRef} src={videoSrc} className="h-full w-full" controls onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={(event) => { setDuration(event.currentTarget.duration); setPlaying(false); setWatchState({ watchedSeconds: watchRef.current.watchedSeconds, durationSeconds: watchRef.current.durationSeconds }); saveWatchProgress(true); onComplete?.(); }} />}
+        {videoType === 'youtube' ? (
+          <iframe
+            ref={youtubeFrameRef}
+            className="h-full w-full"
+            src={youtubeEmbedUrl}
+            title="Training video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        ) : <video ref={htmlVideoRef} src={videoSrc} className="h-full w-full" controls onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={(event) => { setDuration(event.currentTarget.duration); setPlaying(false); setWatchState({ watchedSeconds: watchRef.current.watchedSeconds, durationSeconds: watchRef.current.durationSeconds }); saveWatchProgress(true); onComplete?.(); }} />}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ${completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{completed ? <CheckCircle2 size={17} /> : <Video size={17} />}{completed ? 'Video requirement complete' : 'Watch through the end to unlock the quiz'}</div>

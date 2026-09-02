@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseVideoUrl } from './video.js';
+import { getYouTubeEmbedUrl, parseVideoUrl } from './video.js';
 
 test('parses common YouTube URL formats', () => {
   assert.deepEqual(parseVideoUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), { type: 'youtube', id: 'dQw4w9WgXcQ' });
@@ -14,4 +14,11 @@ test('parses directly hosted MP4 and WebM videos and rejects unsupported URLs', 
   assert.deepEqual(parseVideoUrl('training-videos/heat-press.mp4'), { type: 'mp4', url: 'training-videos/heat-press.mp4' });
   assert.equal(parseVideoUrl('https://example.org/page'), null);
   assert.equal(parseVideoUrl('not a url'), null);
+});
+
+test('builds a playable YouTube embed URL with optional JS API tracking', () => {
+  assert.equal(
+    getYouTubeEmbedUrl('dQw4w9WgXcQ', 'https://jblackfordwork.github.io'),
+    'https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&rel=0&modestbranding=1&origin=https%3A%2F%2Fjblackfordwork.github.io',
+  );
 });
