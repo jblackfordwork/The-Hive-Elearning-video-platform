@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAssigned(courseId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + courseId));
+    }
+
+    function coursePublished(courseId) {
+      return exists(/databases/$(database)/documents/courses/$(courseId))
+        && get(/databases/$(database)/documents/courses/$(courseId)).data.status == 'published';
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.role == 'student';
+      allow update: if isAdmin()
+        || (isOwner(uid)
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.uid == resource.data.uid);
+      allow delete: if false;
+    }
+
+    match /courses/{courseId} {
+      allow read: if isAdmin()
+        || (isAssigned(courseId) && resource.data.status == 'published');
+      allow create, update: if isAdmin();
+      allow delete: if false;
+
+      match /lessons/{lessonId} {
+        allow read: if isAdmin() || (isAssigned(courseId) && coursePublished(courseId));
+        allow create, update, delete: if isAdmin();
+
+        match /questions/{questionId} {
+          allow read: if isAdmin() || (isAssigned(courseId) && coursePublished(courseId));
+          allow create, update, delete: if isAdmin();
+        }
+      }
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /progress/{progressId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && isAssigned(request.resource.data.courseId)
+        && coursePublished(request.resource.data.courseId);
+      allow update: if isAdmin()
+        || (signedIn()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.courseId == resource.data.courseId
+          && isAssigned(resource.data.courseId)
+          && coursePublished(resource.data.courseId));
+      allow delete: if false;
+    }
+
+    match /attempts/{attemptId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && isAssigned(request.resource.data.courseId)
+        && coursePublished(request.resource.data.courseId)
+        && request.resource.data.totalQuestions > 0
+        && request.resource.data.scorePercent >= 0
+        && request.resource.data.scorePercent <= 100;
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "the-hive-training-center",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "deploy:firebase": "npx firebase-tools@latest deploy --only firestore:rules,firestore:indexes",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "node --test src/lib/firebaseConfig.test.js src/domain/access.test.js src/domain/classes.test.js src/domain/courseProgress.test.js src/domain/courseValidation.test.js src/domain/progress.test.js src/domain/quiz.test.js src/domain/video.test.js src/domain/videoProgress.test.js src/domain/youtubeImport.test.js"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "axios": "^1.11.0",
+    "firebase": "^12.18.0",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.541.0",
+    "process": "^0.11.10",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-is": "^19.2.0",
+    "react-router-dom": "^7.8.1",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "postcss": "^8.5.6",
+    "vite": "^7.1.2"
+  },
+  "description": "Genesee Career Institute The Hive School Store equipment training platform"
+}
