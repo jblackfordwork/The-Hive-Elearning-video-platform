@@ -24,23 +24,28 @@ const OPTIONAL_FIREBASE_ENV_DEFAULTS = {
   VITE_FIREBASE_MEASUREMENT_ID: 'G-0RDYH5VWTM',
 };
 
+function envValue(env, key, defaults) {
+  const raw = String(env[key] ?? defaults[key] ?? '').trim();
+  return raw.replace(new RegExp(`^${key}\\s*=\\s*`, 'i'), '').trim();
+}
+
 export function getFirebaseConfig(env = {}, { useDefaults = true } = {}) {
   const defaults = useDefaults ? FIREBASE_ENV_DEFAULTS : {};
   const optionalDefaults = useDefaults ? OPTIONAL_FIREBASE_ENV_DEFAULTS : {};
   const missingKeys = Object.keys(FIREBASE_ENV_MAP).filter(
-    (key) => !String(env[key] ?? defaults[key] ?? '').trim(),
+    (key) => !envValue(env, key, defaults),
   );
 
   const config = Object.entries(FIREBASE_ENV_MAP).reduce(
     (result, [envKey, firebaseKey]) => {
-      result[firebaseKey] = String(env[envKey] ?? defaults[envKey] ?? '').trim();
+      result[firebaseKey] = envValue(env, envKey, defaults);
       return result;
     },
     {},
   );
 
   Object.entries(OPTIONAL_FIREBASE_ENV_MAP).forEach(([envKey, firebaseKey]) => {
-    const value = String(env[envKey] ?? optionalDefaults[envKey] ?? '').trim();
+    const value = envValue(env, envKey, optionalDefaults);
     if (value) config[firebaseKey] = value;
   });
 
