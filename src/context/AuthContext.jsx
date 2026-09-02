@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(firebaseReady);
   const [authError, setAuthError] = useState('');
   const allowedDomains = useMemo(
-    () => normalizeAllowedDomains(import.meta.env.VITE_ALLOWED_EMAIL_DOMAINS || ''),
+    () => normalizeAllowedDomains(import.meta.env.VITE_ALLOWED_EMAIL_DOMAINS || 'students.geneseeisd.org,geneseeisd.org'),
     [],
   );
 

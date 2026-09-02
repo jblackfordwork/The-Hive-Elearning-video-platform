@@ -12,7 +12,7 @@ const completeEnv = {
 };
 
 test('reports every missing required Firebase environment key', () => {
-  const result = getFirebaseConfig({ VITE_FIREBASE_API_KEY: 'api-key' });
+  const result = getFirebaseConfig({ VITE_FIREBASE_API_KEY: 'api-key' }, { useDefaults: false });
   assert.deepEqual(result.missingKeys, [
     'VITE_FIREBASE_AUTH_DOMAIN',
     'VITE_FIREBASE_PROJECT_ID',
@@ -23,7 +23,7 @@ test('reports every missing required Firebase environment key', () => {
 });
 
 test('normalizes complete Vite environment variables into Firebase config', () => {
-  const result = getFirebaseConfig(completeEnv);
+  const result = getFirebaseConfig(completeEnv, { useDefaults: false });
   assert.deepEqual(result.missingKeys, []);
   assert.deepEqual(result.config, {
     apiKey: 'api-key',
@@ -39,7 +39,15 @@ test('includes optional Firebase measurement ID without requiring it', () => {
   const result = getFirebaseConfig({
     ...completeEnv,
     VITE_FIREBASE_MEASUREMENT_ID: 'G-ABC123',
-  });
+  }, { useDefaults: false });
   assert.deepEqual(result.missingKeys, []);
   assert.equal(result.config.measurementId, 'G-ABC123');
+});
+
+test('uses The Hive Firebase defaults when environment values are absent', () => {
+  const result = getFirebaseConfig({});
+  assert.deepEqual(result.missingKeys, []);
+  assert.equal(result.config.projectId, 'the-hive-elearning-courses');
+  assert.equal(result.config.appId, '1:256693232794:web:5a3c73f98c853ee20ceb23');
+  assert.equal(result.config.measurementId, 'G-0RDYH5VWTM');
 });
