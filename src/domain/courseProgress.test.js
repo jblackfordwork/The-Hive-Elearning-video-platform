@@ -13,3 +13,13 @@ test('splits assigned courses into active and completed groups', () => {
   assert.deepEqual(result.active.map((item) => item.course.id), ['a', 'b', 'd']);
   assert.deepEqual(result.completed.map((item) => item.course.id), ['c']);
 });
+
+test('treats completed assignment status as completed training', () => {
+  const result = splitCoursesByCompletion([
+    { course: { id: 'active' }, assignment: { status: 'in_progress' }, progress: { percentComplete: 99 } },
+    { course: { id: 'done' }, assignment: { status: 'completed' } },
+  ]);
+
+  assert.deepEqual(result.active.map((item) => item.course.id), ['active']);
+  assert.deepEqual(result.completed.map((item) => item.course.id), ['done']);
+});
