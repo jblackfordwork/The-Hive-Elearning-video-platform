@@ -57,11 +57,23 @@ service cloud.firestore {
 
     match /assignments/{assignmentId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && resource.data.uid == request.auth.uid
+          && isAssigned(resource.data.courseId)
+          && coursePublished(resource.data.courseId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status in ['in_progress', 'completed']);
     }
 
     match /progress/{progressId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      // First-time learners have no progress document. An empty get contains no
+      // student data; existing documents and collection queries remain owner-only.
+      allow get: if isAdmin() || (signedIn()
+        && (!exists(/databases/$(database)/documents/progress/$(progressId))
+          || resource.data.uid == request.auth.uid));
+      allow list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && isAssigned(request.resource.data.courseId)

@@ -1,16 +1,23 @@
+import ClassAssignmentReport from '../../components/admin/ClassAssignmentReport';
+import { listAllProgress } from '../../services/progressService';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ClipboardPlus, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { listUsers } from '../../services/adminService';
 import { listAllCourses } from '../../services/courseService';
-import { assignTrainingsToUsers } from '../../services/assignmentService';
+import { assignTrainingsToUsers, listAllAssignments, unassignCourse } from '../../services/assignmentService';
 import { getClassOptions, normalizeClassName } from '../../domain/classes';
 
 export default function Classes() {
+  const [params, setParams] = useSearchParams();
+  const className = params.has('class') ? params.get('class') : null;
+  return <ClassPage key={JSON.stringify(className)} className={className} onOpenClass={name => setParams(name === null ? {} : { class: name })} />;
+}
+
+function ClassPage({ className, onOpenClass }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
-  const [className, setClassName] = useState(null);
   const [courseIds, setCourseIds] = useState([]);
   const [dueDate, setDueDate] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,8 +26,8 @@ export default function Classes() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([listUsers(), listAllCourses()]).then(([users, courses]) => {
-      if (active) setData({ users: users.filter(item => item.role !== 'admin'), courses: courses.filter(item => item.status === 'published') });
+    Promise.all([listUsers(), listAllCourses(), listAllAssignments(), listAllProgress()]).then(([users, courses, assignments, progress]) => {
+      if (active) setData({ users: users.filter(item => item.role !== 'admin'), courses: courses.filter(item => item.status === 'published'), allCourses: courses, assignments, progress });
     }).catch(err => { if (active) setError(err.message); });
     return () => { active = false; };
   }, []);
@@ -28,7 +35,7 @@ export default function Classes() {
   const students = data?.users.filter(item => normalizeClassName(item.className) === className) || [];
   const classOptions = getClassOptions(data?.users || []);
   const openClass = value => {
-    setClassName(value);
+    onOpenClass(value);
     setCourseIds([]);
     setDueDate('');
     setMessage('');
@@ -48,8 +55,39 @@ export default function Classes() {
       setMessage(`${result.created} assignment${result.created === 1 ? '' : 's'} added. ${result.skipped} already assigned; existing progress was kept.`);
       if (result.failed) setError(`${result.failed} assignment${result.failed === 1 ? '' : 's'} could not be saved. Try again; assignments already saved will be kept.`);
       else setCourseIds([]);
+      try {
+        const assignments = await listAllAssignments();
+        setData(current => ({ ...current, assignments }));
+      } catch {
+        setError('Assignments were processed, but the updated list could not be loaded. Refresh this page to see the latest assignments.');
+      }
     } catch (err) {
       setError(err.message || 'Unable to assign training. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeAssignments = async (items, description) => {
+    if (busy || !items.length) return;
+    if (!window.confirm(`Remove ${description} (${items.length} assignment${items.length === 1 ? '' : 's'})? Progress and quiz history will be kept.`)) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    const removed = new Set();
+    let failed = 0;
+    try {
+      for (let start = 0; start < items.length; start += 10) {
+        const chunk = items.slice(start, start + 10);
+        const results = await Promise.allSettled(chunk.map(item => unassignCourse(item.uid, item.courseId)));
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') removed.add(chunk[index].id);
+          else failed += 1;
+        });
+      }
+      setData(current => ({ ...current, assignments: current.assignments.filter(item => !removed.has(item.id)) }));
+      setMessage(`${removed.size} assignment${removed.size === 1 ? '' : 's'} removed. Progress and quiz history were kept.`);
+      if (failed) setError(`${failed} assignment${failed === 1 ? '' : 's'} could not be removed. Try again to remove the remaining assignments.`);
     } finally {
       setBusy(false);
     }
@@ -58,7 +96,8 @@ export default function Classes() {
   return (
     <div className="hive-page">
       <p className="text-xs font-black uppercase tracking-[.18em] text-amber-600">Class management</p>
-      <h1 className="mt-2 text-4xl font-black">Classes</h1>
+      {className !== null && <button type="button" disabled={busy} onClick={() => onOpenClass(null)} className="mt-3 font-bold text-amber-700">← All classes</button>}
+      <h1 className="mt-2 text-4xl font-black">{className === null ? 'Classes' : className || 'Unassigned'}</h1>
       <p className="mt-2 text-slate-500">Open a class to view its students and assign trainings to everyone at once.</p>
       {!data && !error && <p className="mt-6">Loading classes…</p>}
       {data && !classOptions.length && <div className="hive-panel mt-6 p-6"><p>No students have signed in yet.</p><Link to="/admin/users" className="hive-secondary-button mt-4">Manage class membership</Link></div>}
@@ -70,7 +109,8 @@ export default function Classes() {
       </div>
       {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</p>}
       {message && <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">{message}</p>}
-      {className !== null && <div className="mt-7 grid gap-6 xl:grid-cols-[1fr_1.3fr]">
+      {className !== null && data && <ClassAssignmentReport students={students} assignments={data.assignments} courses={data.allCourses} progress={data.progress} busy={busy} onRemove={removeAssignments} />}
+      {className !== null && data && <div className="mt-7 grid gap-6 xl:grid-cols-[1fr_1.3fr]">
         <section className="hive-panel p-6">
           <h2 className="text-2xl font-black">{className || 'Unassigned'} roster</h2>
           <p className="mt-2 text-sm text-slate-500">{students.length} students • <Link to="/admin/users" className="font-bold text-amber-700">Manage class membership</Link></p>
