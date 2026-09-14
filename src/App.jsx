@@ -1,3 +1,4 @@
+import Classes from './pages/Admin/Classes';
 import StudentPreview from './components/admin/StudentPreview';
 import StudentViewPicker from './pages/Admin/StudentViewPicker';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="course/:courseId/lesson/:lessonId" element={<LessonPlayer />} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="admin/student-view" element={<RequireAdmin><StudentViewPicker /></RequireAdmin>} />
+        <Route path="admin/classes" element={<RequireAdmin><Classes /></RequireAdmin>} />
         <Route path="admin/students" element={<RequireAdmin><Students /></RequireAdmin>} />
         <Route path="admin/students/:uid" element={<RequireAdmin><StudentDetail /></RequireAdmin>} />
         <Route path="admin/attempts/:attemptId" element={<RequireAdmin><AttemptDetail /></RequireAdmin>} />

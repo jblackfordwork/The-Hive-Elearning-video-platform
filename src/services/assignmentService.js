@@ -46,3 +46,23 @@ export async function listAllAssignments() {
   const snapshot = await db.collection('assignments').get();
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
+
+export async function assignTrainingsToUsers({ userIds, courseIds, assignedBy, dueDate = null }) {
+  requireDb();
+  const pairs = [...new Set(userIds)].flatMap(uid => [...new Set(courseIds)].map(courseId => ({ uid, courseId })));
+  const summary = { created: 0, skipped: 0, failed: 0 };
+  // Limit concurrent transactions for large classes. Each assignment is idempotent.
+  for (let start = 0; start < pairs.length; start += 10) {
+    const results = await Promise.allSettled(pairs.slice(start, start + 10).map(({ uid, courseId }) => {
+      const ref = db.collection('assignments').doc(assignmentId(uid, courseId));
+      return db.runTransaction(async transaction => {
+        const existing = await transaction.get(ref);
+        if (existing.exists) return 'skipped';
+        transaction.set(ref, { uid, courseId, assignedBy, assignedAt: serverTimestamp(), dueDate, status: 'assigned' });
+        return 'created';
+      });
+    }));
+    results.forEach(result => { summary[result.status === 'fulfilled' ? result.value : 'failed'] += 1; });
+  }
+  return summary;
+}

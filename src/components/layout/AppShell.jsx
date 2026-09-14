@@ -10,6 +10,7 @@ const studentNav = [
 const adminNav = [
   { to: '/admin/student-view', label: 'Student view', icon: GraduationCap },
   { to: '/admin', label: 'Admin Overview', icon: LayoutDashboard, end: true },
+  { to: '/admin/classes', label: 'Classes', icon: Users },
   { to: '/admin/students', label: 'Students', icon: Users },
   { to: '/admin/courses', label: 'Courses', icon: BookOpenCheck },
   { to: '/admin/assignments', label: 'Assignments', icon: ClipboardList },
