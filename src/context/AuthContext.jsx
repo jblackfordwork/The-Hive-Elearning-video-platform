@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
 import { auth, db, firebaseReady, googleProvider } from '../lib/firebase';
-import { isEmailAllowed, normalizeAllowedDomains } from '../domain/access';
+import { isEmailAllowed, DOMAIN_ACCESS_MESSAGE } from '../domain/access';
 import { ensureUserProfile } from '../services/userService';
 
 export const AuthContext = createContext(null);
@@ -11,10 +11,6 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(firebaseReady);
   const [authError, setAuthError] = useState('');
-  const allowedDomains = useMemo(
-    () => normalizeAllowedDomains(import.meta.env.VITE_ALLOWED_EMAIL_DOMAINS || 'students.geneseeisd.org,geneseeisd.org'),
-    [],
-  );
 
   useEffect(() => {
     if (!firebaseReady || !auth) {
@@ -25,7 +21,6 @@ export function AuthProvider({ children }) {
     let unsubscribeProfile = null;
     const unsubscribeAuth = auth.onAuthStateChanged(async (nextUser) => {
       setLoading(true);
-      setAuthError('');
       if (unsubscribeProfile) {
         unsubscribeProfile();
         unsubscribeProfile = null;
@@ -38,9 +33,15 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      if (!isEmailAllowed(nextUser.email, allowedDomains)) {
-        setAuthError('This Google account is not approved for The Hive Training Center.');
-        await auth.signOut();
+      if (!nextUser.emailVerified || !isEmailAllowed(nextUser.email) || !nextUser.providerData.some((provider) => provider.providerId === 'google.com')) {
+        setUser(null);
+        setProfile(null);
+        setAuthError(DOMAIN_ACCESS_MESSAGE);
+        try {
+          await auth.signOut();
+        } catch {
+          // Keep access blocked locally even if sign-out cannot reach Firebase.
+        }
         setLoading(false);
         return;
       }
@@ -65,7 +66,7 @@ export function AuthProvider({ children }) {
       unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
     };
-  }, [allowedDomains]);
+  }, []);
 
   const signInWithGoogle = async () => {
     if (!firebaseReady || !auth || !googleProvider) {
@@ -77,7 +78,9 @@ export function AuthProvider({ children }) {
       await auth.signInWithPopup(googleProvider);
     } catch (error) {
       if (error?.code !== 'auth/popup-closed-by-user') {
-        setAuthError(error.message || 'Google sign-in failed.');
+        setAuthError(error.message?.includes('HIVE_DOMAIN_NOT_ALLOWED')
+          ? DOMAIN_ACCESS_MESSAGE
+          : error.message || 'Google sign-in failed.');
       }
     }
   };

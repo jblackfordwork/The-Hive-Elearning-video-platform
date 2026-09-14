@@ -2,5 +2,20 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "hive-auth",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log",
+        "*.test.js"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" test"
+      ]
+    }
+  ]
 }

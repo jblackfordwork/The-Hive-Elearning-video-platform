@@ -70,3 +70,13 @@ This edition prioritizes zero-cost static hosting. Quiz grading is client-side, 
 ## License / attribution
 
 The project began from the MIT-licensed LearnStream frontend supplied for this build. See `LICENSE` and `NOTICE.md`.
+
+## School account restriction
+
+Only verified Google accounts at `students.geneseeisd.org` and `geneseeisd.org` may access training data, including administrators. The app checks the email before loading a profile, and Firestore rules independently enforce the domains, email verification, and Google sign-in provider. `VITE_ALLOWED_EMAIL_DOMAINS` no longer overrides this policy.
+
+Install both dependency sets with `npm ci` and `npm ci --prefix functions`. Run `npm test` for application and authentication-hook tests; `npm run test:rules` tests database access in an isolated demo Firestore emulator (Java 17 or newer).
+
+The `functions/` package supplies `restrictAccountCreation` and `restrictSignIn` blocking hooks. These prevent rejected accounts from being created or receiving a sign-in token. Deployment requires the Firebase **Blaze** plan and **Firebase Authentication with Identity Platform**. Enable those in the Firebase console, then run `npm run deploy:firebase`. Confirm both hooks are registered under Authentication settings → Blocking functions. Publish the frontend through the normal GitHub Pages workflow.
+
+On September 14, 2026, the domain-restricted Firestore rules were deployed successfully. Blocking-hook deployment was rejected because the project needs a Blaze upgrade; its authentication configuration was still `FIREBASE_AUTH`. Until those upgrades and hook deployment are complete, other domains can still authenticate with Firebase itself, but cannot read or write training data. Existing accounts are not deleted.

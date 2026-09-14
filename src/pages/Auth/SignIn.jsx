@@ -37,8 +37,8 @@ export default function SignIn() {
           <div className="rounded-3xl bg-white border border-slate-200 shadow-2xl shadow-slate-900/10 p-8 sm:p-10">
             <p className="text-xs font-black tracking-[0.24em] text-amber-600 uppercase">The Hive School Store</p>
             <h2 className="mt-3 text-3xl font-black">Sign in to training</h2>
-            <p className="mt-3 text-slate-600">Use your approved Google account. Your training record is created automatically the first time you sign in.</p>
-            {authError && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{authError}</div>}
+            <p className="mt-3 text-slate-600">Use your @students.geneseeisd.org or @geneseeisd.org Google account. Your training record is created automatically the first time you sign in.</p>
+            {authError && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{authError}</div>}
             <button type="button" onClick={signInWithGoogle} className="hive-primary-button mt-7 w-full justify-center">
               <LogIn size={20} /> Continue with Google
             </button>

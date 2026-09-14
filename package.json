@@ -8,10 +8,11 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
-    "deploy:firebase": "npx firebase-tools@latest deploy --only firestore:rules,firestore:indexes",
+    "deploy:firebase": "npx firebase-tools@latest deploy --project the-hive-elearning-courses --only firestore:rules,firestore:indexes,functions:hive-auth",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/lib/firebaseConfig.test.js src/domain/access.test.js src/domain/classes.test.js src/domain/courseProgress.test.js src/domain/courseValidation.test.js src/domain/progress.test.js src/domain/quiz.test.js src/domain/video.test.js src/domain/videoProgress.test.js src/domain/youtubeImport.test.js"
+    "test": "node --test src/lib/firebaseConfig.test.js src/domain/access.test.js src/domain/classes.test.js src/domain/courseProgress.test.js src/domain/courseValidation.test.js src/domain/progress.test.js src/domain/quiz.test.js src/domain/video.test.js src/domain/videoProgress.test.js src/domain/youtubeImport.test.js && npm --prefix functions test",
+    "test:rules": "npx firebase-tools@13.35.1 emulators:exec --project demo-hive-access --only firestore 'node --test tests/firestore-access.test.js'"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "^4.1.11",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
