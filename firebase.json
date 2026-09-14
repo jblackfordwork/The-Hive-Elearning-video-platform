@@ -17,5 +17,17 @@
         "npm --prefix \"$RESOURCE_DIR\" test"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "site": "the-hive-elearning-courses",
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "predeploy": [
+      "npm run build"
+    ]
+  }
 }

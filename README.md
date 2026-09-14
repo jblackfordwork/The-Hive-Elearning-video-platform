@@ -80,3 +80,9 @@ Install both dependency sets with `npm ci` and `npm ci --prefix functions`. Run 
 The `functions/` package supplies `restrictAccountCreation` and `restrictSignIn` blocking hooks. These prevent rejected accounts from being created or receiving a sign-in token. Deployment requires the Firebase **Blaze** plan and **Firebase Authentication with Identity Platform**. Enable those in the Firebase console, then run `npm run deploy:firebase`. Confirm both hooks are registered under Authentication settings → Blocking functions. Publish the frontend through the normal GitHub Pages workflow.
 
 On September 14, 2026, the domain-restricted Firestore rules were deployed successfully. Blocking-hook deployment was rejected because the project needs a Blaze upgrade; its authentication configuration was still `FIREBASE_AUTH`. Until those upgrades and hook deployment are complete, other domains can still authenticate with Firebase itself, but cannot read or write training data. Existing accounts are not deleted.
+
+## Firebase Hosting
+
+The Classroom sharing URL is https://the-hive-elearning-courses.web.app/ . The favicon is served at the hostname root, and this domain is authorized for Google sign-in.
+
+Run `npm run deploy:hosting` to build and publish website updates to Firebase Hosting. This command deploys only the static website; it does not deploy authentication functions or database rules. The GitHub Pages workflow continues to update the existing GitHub Pages URL separately.
