@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Award, ClipboardCheck } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useStudentView } from '../../hooks/useStudentView';
 import { getCourse, listLessons } from '../../services/courseService';
 import { getProgress } from '../../services/progressService';
 import LessonList from '../../components/course/LessonList';
@@ -9,7 +9,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 
 export default function CourseOverview() {
   const { courseId } = useParams();
-  const { user } = useAuth();
+  const { user, basePath } = useStudentView();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -26,7 +26,7 @@ export default function CourseOverview() {
   const complete = data.progress.percentComplete >= 100;
   return (
     <div className="hive-page max-w-6xl">
-      <Link to="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"><ArrowLeft size={16} /> My Training</Link>
+      <Link to={basePath || '/'} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"><ArrowLeft size={16} /> My Training</Link>
       <section className="mt-5 overflow-hidden rounded-3xl bg-slate-950 text-white">
         <div className="grid lg:grid-cols-[1fr_340px]">
           <div className="p-7 sm:p-10"><p className="text-xs font-black uppercase tracking-[.18em] text-amber-300">{data.course.equipmentName || 'Equipment Training'}</p><h1 className="mt-3 text-4xl sm:text-5xl font-black">{data.course.title}</h1><p className="mt-4 max-w-2xl text-slate-300 leading-relaxed">{data.course.description}</p><div className="mt-7 max-w-xl"><ProgressBar value={data.progress.percentComplete} /></div></div>

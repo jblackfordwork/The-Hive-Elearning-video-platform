@@ -1,3 +1,5 @@
+import StudentPreview from './components/admin/StudentPreview';
+import StudentViewPicker from './pages/Admin/StudentViewPicker';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import RequireAuth from './components/auth/RequireAuth';
 import RequireAdmin from './components/auth/RequireAdmin';
@@ -26,6 +28,7 @@ export default function App() {
         <Route path="course/:courseId" element={<CourseOverview />} />
         <Route path="course/:courseId/lesson/:lessonId" element={<LessonPlayer />} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="admin/student-view" element={<RequireAdmin><StudentViewPicker /></RequireAdmin>} />
         <Route path="admin/students" element={<RequireAdmin><Students /></RequireAdmin>} />
         <Route path="admin/students/:uid" element={<RequireAdmin><StudentDetail /></RequireAdmin>} />
         <Route path="admin/attempts/:attemptId" element={<RequireAdmin><AttemptDetail /></RequireAdmin>} />
@@ -33,6 +36,11 @@ export default function App() {
         <Route path="admin/courses" element={<RequireAdmin><Courses /></RequireAdmin>} />
         <Route path="admin/courses/:courseId" element={<RequireAdmin><CourseEditor /></RequireAdmin>} />
         <Route path="admin/assignments" element={<RequireAdmin><Assignments /></RequireAdmin>} />
+      </Route>
+      <Route path="student-view/:uid" element={<RequireAdmin><StudentPreview /></RequireAdmin>}>
+        <Route index element={<StudentDashboard />} />
+        <Route path="course/:courseId" element={<CourseOverview />} />
+        <Route path="course/:courseId/lesson/:lessonId" element={<LessonPlayer />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

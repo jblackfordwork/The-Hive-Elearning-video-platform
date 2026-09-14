@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useStudentView } from '../../hooks/useStudentView';
 import { getCourse, listLessons, listQuestions } from '../../services/courseService';
 import { getProgress, markVideoCompleted, recordQuizProgress, recordVideoWatchProgress } from '../../services/progressService';
 import { createAttempt } from '../../services/attemptService';
@@ -12,7 +12,7 @@ import LessonQuiz from '../../components/quiz/LessonQuiz';
 
 export default function LessonPlayer() {
   const { courseId, lessonId } = useParams();
-  const { user } = useAuth();
+  const { user, basePath, readOnly } = useStudentView();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [savingVideo, setSavingVideo] = useState(false);
@@ -36,6 +36,7 @@ export default function LessonPlayer() {
   const nextLesson = data && lessonComplete ? getNextLesson(data.lessons, completedIds) : null;
 
   const handleWatchProgress = useCallback(async ({ watchedSeconds, durationSeconds }) => {
+    if (readOnly) return;
     try {
       const nextProgress = await recordVideoWatchProgress({
         uid: user.uid,
@@ -48,10 +49,10 @@ export default function LessonPlayer() {
     } catch (err) {
       setError(err.message || 'Unable to save watch time.');
     }
-  }, [user.uid, courseId, lessonId]);
+  }, [user.uid, courseId, lessonId, readOnly]);
 
   const handleVideoComplete = useCallback(async () => {
-    if (!data || savingVideo || lessonProgress.videoCompleted) return;
+    if (readOnly || !data || savingVideo || lessonProgress.videoCompleted) return;
     setSavingVideo(true);
     try {
       const nextProgress = await markVideoCompleted({ uid: user.uid, courseId, lessonId, lessonIds, requireQuiz });
@@ -62,9 +63,10 @@ export default function LessonPlayer() {
     } finally {
       setSavingVideo(false);
     }
-  }, [data, savingVideo, lessonProgress.videoCompleted, user.uid, courseId, lessonId, lessonIds, requireQuiz]);
+  }, [readOnly, data, savingVideo, lessonProgress.videoCompleted, user.uid, courseId, lessonId, lessonIds, requireQuiz]);
 
   const handleQuizSubmitted = async (result) => {
+    if (readOnly) return;
     await createAttempt({ uid: user.uid, courseId, lessonId, passingScorePercent: lesson.passingScorePercent, result });
     const nextProgress = await recordQuizProgress({ uid: user.uid, courseId, lessonId, lessonIds, lessons: data.lessons, result });
     setData((current) => ({ ...current, progress: nextProgress }));
@@ -73,12 +75,12 @@ export default function LessonPlayer() {
 
   if (error && !data) return <div className="hive-page"><div className="rounded-xl bg-red-50 p-5 text-red-700">{error}</div></div>;
   if (!data) return <div className="hive-loading">Loading lesson…</div>;
-  if (!lesson || !data.course) return <Navigate to={`/course/${courseId}`} replace />;
-  if (!unlocked) return <div className="hive-page max-w-3xl"><div className="hive-panel p-8 text-center"><LockKeyhole className="mx-auto text-slate-400" size={40} /><h1 className="mt-4 text-2xl font-black">This lesson is still locked</h1><p className="mt-2 text-slate-600">Complete the lessons before this one first.</p><Link to={`/course/${courseId}`} className="hive-primary-button mt-6">Back to course</Link></div></div>;
+  if (!lesson || !data.course) return <Navigate to={`${basePath}/course/${courseId}`} replace />;
+  if (!unlocked) return <div className="hive-page max-w-3xl"><div className="hive-panel p-8 text-center"><LockKeyhole className="mx-auto text-slate-400" size={40} /><h1 className="mt-4 text-2xl font-black">This lesson is still locked</h1><p className="mt-2 text-slate-600">Complete the lessons before this one first.</p><Link to={`${basePath}/course/${courseId}`} className="hive-primary-button mt-6">Back to course</Link></div></div>;
 
   return (
     <div className="hive-page max-w-6xl">
-      <Link to={`/course/${courseId}`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"><ArrowLeft size={16} /> {data.course.title}</Link>
+      <Link to={`${basePath}/course/${courseId}`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"><ArrowLeft size={16} /> {data.course.title}</Link>
       <div className="mt-5 grid gap-6 xl:grid-cols-[1fr_330px]">
         <section>
           <div className="mb-5"><p className="text-xs font-black uppercase tracking-[.16em] text-amber-600">Lesson {data.lessons.findIndex((item) => item.id === lessonId) + 1} of {data.lessons.length}</p><h1 className="mt-2 text-3xl sm:text-4xl font-black">{lesson.title}</h1>{lesson.description && <p className="mt-3 text-slate-600 leading-relaxed">{lesson.description}</p>}</div>
@@ -90,7 +92,7 @@ export default function LessonPlayer() {
         </section>
         <aside className="xl:sticky xl:top-8 xl:self-start">
           <div className="hive-panel p-5"><p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">Lesson requirements</p><div className="mt-4 space-y-3"><div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm font-bold"><span>Watch video</span><span className={lessonProgress.videoCompleted ? 'text-emerald-700' : 'text-slate-400'}>{lessonProgress.videoCompleted ? 'Complete' : 'Required'}</span></div><div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm font-bold"><span>Pass quiz</span><span className={!requireQuiz || lessonProgress.quizPassed ? 'text-emerald-700' : 'text-slate-400'}>{!requireQuiz ? 'Not required' : lessonProgress.quizPassed ? 'Passed' : `${lesson.passingScorePercent}%+`}</span></div></div>
-            {lessonComplete && (nextLesson ? <Link to={`/course/${courseId}/lesson/${nextLesson.id}`} className="hive-primary-button mt-5 w-full justify-center">Next lesson <ArrowRight size={16} /></Link> : <Link to={`/course/${courseId}`} className="hive-primary-button mt-5 w-full justify-center">Course complete <CheckCircle2 size={16} /></Link>)}
+            {lessonComplete && (nextLesson ? <Link to={`${basePath}/course/${courseId}/lesson/${nextLesson.id}`} className="hive-primary-button mt-5 w-full justify-center">Next lesson <ArrowRight size={16} /></Link> : <Link to={`${basePath}/course/${courseId}`} className="hive-primary-button mt-5 w-full justify-center">Course complete <CheckCircle2 size={16} /></Link>)}
           </div>
         </aside>
       </div>

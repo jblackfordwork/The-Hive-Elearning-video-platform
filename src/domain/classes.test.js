@@ -19,5 +19,6 @@ test('class filter matches selected class and unassigned users', () => {
   assert.equal(userMatchesClass({ className: '2nd Hour' }, '1st Hour'), false);
   assert.equal(userMatchesClass({ className: '' }, ''), true);
   assert.equal(userMatchesClass({}, ''), true);
+  assert.equal(userMatchesClass({ className: '1st Hour' }, ''), false);
   assert.equal(userMatchesClass({ className: '1st Hour' }, 'all'), true);
 });

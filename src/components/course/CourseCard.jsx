@@ -1,9 +1,11 @@
+import { useStudentView } from '../../hooks/useStudentView';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, CheckCircle2, Wrench } from 'lucide-react';
 import ProgressBar from '../ui/ProgressBar';
 import StatusBadge from '../ui/StatusBadge';
 
 export default function CourseCard({ course, assignment, progress }) {
+  const { basePath } = useStudentView();
   const percent = progress?.percentComplete || 0;
   const status = percent >= 100 ? 'completed' : percent > 0 ? 'in_progress' : assignment?.status || 'assigned';
   return (
@@ -21,7 +23,7 @@ export default function CourseCard({ course, assignment, progress }) {
         <div className="mt-5"><ProgressBar value={percent} /></div>
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <span className="flex items-center gap-2 text-xs font-bold text-slate-500">{percent >= 100 ? <CheckCircle2 size={16} className="text-emerald-600" /> : <BookOpen size={16} />} {percent >= 100 ? 'Training completed' : percent > 0 ? 'Continue where you left off' : 'Ready to begin'}</span>
-          <Link to={`/course/${course.id}`} className="hive-primary-button text-sm">{percent > 0 && percent < 100 ? 'Continue' : percent >= 100 ? 'Review' : 'Start'} <ArrowRight size={16} /></Link>
+          <Link to={`${basePath}/course/${course.id}`} className="hive-primary-button text-sm">{percent > 0 && percent < 100 ? 'Continue' : percent >= 100 ? 'Review' : 'Start'} <ArrowRight size={16} /></Link>
         </div>
       </div>
     </article>

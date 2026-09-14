@@ -11,8 +11,9 @@
     "deploy:firebase": "npx firebase-tools@latest deploy --project the-hive-elearning-courses --only firestore:rules,firestore:indexes,functions:hive-auth",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/lib/firebaseConfig.test.js src/domain/access.test.js src/domain/classes.test.js src/domain/courseProgress.test.js src/domain/courseValidation.test.js src/domain/progress.test.js src/domain/quiz.test.js src/domain/video.test.js src/domain/videoProgress.test.js src/domain/youtubeImport.test.js && npm --prefix functions test",
-    "test:rules": "npx firebase-tools@13.35.1 emulators:exec --project demo-hive-access --only firestore 'node --test tests/firestore-access.test.js'"
+    "test": "node --test src/lib/firebaseConfig.test.js src/domain/access.test.js src/domain/classes.test.js src/domain/recentAttempts.test.js src/domain/courseProgress.test.js src/domain/courseValidation.test.js src/domain/progress.test.js src/domain/quiz.test.js src/domain/video.test.js src/domain/videoProgress.test.js src/domain/youtubeImport.test.js && npm --prefix functions test && npm run test:ui",
+    "test:rules": "npx firebase-tools@13.35.1 emulators:exec --project demo-hive-access --only firestore 'node --test tests/firestore-access.test.js'",
+    "test:ui": "vitest run"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
@@ -31,6 +32,7 @@
     "@eslint/js": "^9.33.0",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "^4.1.11",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
@@ -39,8 +41,10 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.6",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "vitest": "^5.0.0"
   },
   "description": "Genesee Career Institute The Hive School Store equipment training platform"
 }

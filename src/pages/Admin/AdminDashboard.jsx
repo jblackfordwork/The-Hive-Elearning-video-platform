@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom';
+import ClassUserFilters from '../../components/admin/ClassUserFilters';
+import { getRecentAttempts } from '../../domain/recentAttempts';
 import { createElement, useEffect, useMemo, useState } from 'react';
 import { BookOpenCheck, CheckCircle2, ClipboardList, Users } from 'lucide-react';
 import { listUsers } from '../../services/adminService';
@@ -15,6 +18,8 @@ function Stat({ icon, label, value, note }) {
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [classFilter, setClassFilter] = useState('all');
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     Promise.all([listUsers(), listAllCourses(), listAllAssignments(), listAllProgress(), listAllAttempts()])
@@ -33,7 +38,7 @@ export default function AdminDashboard() {
 
   if (error) return <div className="hive-page"><div className="rounded-xl bg-red-50 p-5 text-red-700">{error}</div></div>;
   if (!data || !stats) return <div className="hive-loading">Loading admin overview…</div>;
-  const recentAttempts = [...data.attempts].sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0)).slice(0, 8);
+  const recentAttempts = getRecentAttempts(data.attempts, data.users, classFilter, userId);
   const userMap = Object.fromEntries(data.users.map((user) => [user.uid || user.id, user]));
   const courseMap = Object.fromEntries(data.courses.map((course) => [course.id, course]));
 
@@ -41,7 +46,7 @@ export default function AdminDashboard() {
     <div className="hive-page">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[.18em] text-amber-600">The Hive Administration</p><h1 className="mt-2 text-4xl font-black">Training overview</h1><p className="mt-2 text-slate-500">Monitor equipment training, quiz activity, and completion across The Hive.</p></div></div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat icon={Users} label="Students" value={stats.learners} note="Signed-in learners" /><Stat icon={BookOpenCheck} label="Published courses" value={stats.published} note={`${data.courses.length} total courses`} /><Stat icon={CheckCircle2} label="Completions" value={stats.completed} note="Completed assignments" /><Stat icon={ClipboardList} label="Average progress" value={`${stats.avg}%`} note={`${data.assignments.length} assignments`} /></div>
-      <section className="hive-panel mt-7 overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="text-xl font-black">Recent quiz attempts</h2><p className="mt-1 text-sm text-slate-500">Newest submitted knowledge checks across assigned courses.</p></div><div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Student</th><th className="px-5 py-3">Course</th><th className="px-5 py-3">Score</th><th className="px-5 py-3">Result</th><th className="px-5 py-3">Submitted</th></tr></thead><tbody className="divide-y divide-slate-100">{recentAttempts.map((attempt) => <tr key={attempt.id}><td className="px-5 py-4 font-bold">{userMap[attempt.uid]?.displayName || userMap[attempt.uid]?.email || attempt.uid}</td><td className="px-5 py-4 text-slate-600">{courseMap[attempt.courseId]?.title || 'Course'}</td><td className="px-5 py-4 font-black">{attempt.scorePercent}%</td><td className="px-5 py-4"><StatusBadge status={attempt.passed ? 'passed' : 'failed'} /></td><td className="px-5 py-4 text-slate-500">{formatTimestamp(attempt.submittedAt)}</td></tr>)}</tbody></table></div>{!recentAttempts.length && <p className="p-6 text-center text-sm text-slate-500">No quiz attempts yet.</p>}</section>
+      <section className="hive-panel mt-7 overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="text-xl font-black">Recent quiz attempts</h2><p className="mt-1 text-sm text-slate-500">The eight newest attempts for the selected class and user.</p><div className="mt-5"><ClassUserFilters users={data.users} classFilter={classFilter} userId={userId} onClassChange={value => { setClassFilter(value); setUserId(''); }} onUserChange={setUserId} /></div>{userId && <Link to={`/student-view/${encodeURIComponent(userId)}`} className="hive-secondary-button mt-4">View as student</Link>}</div><div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Student</th><th className="px-5 py-3">Course</th><th className="px-5 py-3">Score</th><th className="px-5 py-3">Result</th><th className="px-5 py-3">Submitted</th><th className="px-5 py-3"><span className="sr-only">Details</span></th></tr></thead><tbody className="divide-y divide-slate-100">{recentAttempts.map((attempt) => <tr key={attempt.id}><td className="px-5 py-4 font-bold">{userMap[attempt.uid]?.displayName || userMap[attempt.uid]?.email || attempt.uid}</td><td className="px-5 py-4 text-slate-600">{courseMap[attempt.courseId]?.title || 'Course'}</td><td className="px-5 py-4 font-black">{attempt.scorePercent}%</td><td className="px-5 py-4"><StatusBadge status={attempt.passed ? 'passed' : 'failed'} /></td><td className="px-5 py-4 text-slate-500">{formatTimestamp(attempt.submittedAt)}</td><td className="px-5 py-4"><Link to={`/admin/attempts/${attempt.id}`} className="font-bold text-amber-700">View attempt</Link></td></tr>)}</tbody></table></div>{!recentAttempts.length && <p className="p-6 text-center text-sm text-slate-500">No quiz attempts for this selection.</p>}</section>
     </div>
   );
 }

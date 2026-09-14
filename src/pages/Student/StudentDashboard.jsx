@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useStudentView } from '../../hooks/useStudentView';
 import { listAssignmentsForUser } from '../../services/assignmentService';
 import { getCoursesByIds } from '../../services/courseService';
 import { listProgressForUser } from '../../services/progressService';
@@ -9,7 +9,7 @@ import CourseCard from '../../components/course/CourseCard';
 import EmptyState from '../../components/ui/EmptyState';
 
 export default function StudentDashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile } = useStudentView();
   const [items, setItems] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export default function StudentDashboard() {
         const courses = await getCoursesByIds(assignments.map((assignment) => assignment.courseId));
         const courseMap = Object.fromEntries(courses.map((course) => [course.id, course]));
         const progressMap = Object.fromEntries(progressList.map((progress) => [progress.courseId, progress]));
-        const nextItems = assignments.map((assignment) => ({ assignment, course: courseMap[assignment.courseId], progress: progressMap[assignment.courseId] })).filter((item) => item.course && item.course.status !== 'archived');
+        const nextItems = assignments.map((assignment) => ({ assignment, course: courseMap[assignment.courseId], progress: progressMap[assignment.courseId] })).filter((item) => item.course && item.course.status === 'published');
         if (active) setItems(nextItems);
       } catch (err) {
         if (active) setError(err.message || 'Unable to load your assigned training.');

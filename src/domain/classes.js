@@ -19,6 +19,6 @@ export function getClassOptions(users = []) {
 }
 
 export function userMatchesClass(user, classFilter) {
-  if (!classFilter || classFilter === 'all') return true;
+  if (classFilter == null || classFilter === 'all') return true;
   return normalizeClassName(user?.className) === classFilter;
 }

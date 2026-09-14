@@ -1,8 +1,10 @@
+import { useStudentView } from '../../hooks/useStudentView';
 import { Link } from 'react-router-dom';
 import { Check, LockKeyhole, PlayCircle } from 'lucide-react';
 import { isLessonUnlocked } from '../../domain/progress';
 
 export default function LessonList({ courseId, lessons, completedLessonIds = [] }) {
+  const { basePath } = useStudentView();
   return (
     <div className="space-y-3">
       {lessons.map((lesson, index) => {
@@ -15,7 +17,7 @@ export default function LessonList({ courseId, lessons, completedLessonIds = [] 
             <span className="text-xs font-bold text-slate-500">{complete ? 'Complete' : unlocked ? 'Open' : 'Locked'}</span>
           </div>
         );
-        return unlocked ? <Link key={lesson.id} to={`/course/${courseId}/lesson/${lesson.id}`} className="block">{content}</Link> : <div key={lesson.id}>{content}</div>;
+        return unlocked ? <Link key={lesson.id} to={`${basePath}/course/${courseId}/lesson/${lesson.id}`} className="block">{content}</Link> : <div key={lesson.id}>{content}</div>;
       })}
     </div>
   );
