@@ -9,7 +9,7 @@ vi.mock('../../src/lib/firebase.js', () => ({
     runTransaction: async callback => callback({
       get: async ref => {
         if (store.failed.has(ref.id)) throw new Error('Connection failed');
-        return { exists: store.docs.has(ref.id) };
+        return { exists: store.docs.has(ref.id), data: () => store.docs.get(ref.id) };
       },
       set: (ref, data) => store.docs.set(ref.id, data),
     }),

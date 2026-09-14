@@ -33,11 +33,12 @@ export async function listAttemptsForUser(uid) {
   const snapshot = await db.collection('attempts').where('uid', '==', uid).get();
   return snapshot.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter(row => !row.archived)
     .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
 }
 
 export async function listAllAttempts() {
   requireDb();
   const snapshot = await db.collection('attempts').get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(row => !row.archived);
 }

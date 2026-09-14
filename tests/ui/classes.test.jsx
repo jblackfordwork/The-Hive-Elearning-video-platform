@@ -1,3 +1,4 @@
+import { archiveClass } from '../../src/services/archiveService';
 import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -5,6 +6,7 @@ import Classes from '../../src/pages/Admin/Classes';
 import { AuthContext } from '../../src/context/AuthContext';
 import { assignTrainingsToUsers, unassignCourse } from '../../src/services/assignmentService';
 
+vi.mock('../../src/services/archiveService', () => ({ archiveClass: vi.fn(async () => 'saved-class') }));
 vi.mock('../../src/lib/firebase', () => ({ firebaseReady: true, auth: null, db: null }));
 vi.mock('../../src/services/adminService', () => ({ listUsers: vi.fn(async () => [
   { uid: 'alice', displayName: 'Alice', className: 'First', role: 'student' },
@@ -128,4 +130,12 @@ test('student filter shows only that students assignments', async () => {
   const table = screen.getByRole('table', { name: 'Student assignments' });
   expect(within(table).getByText('Alice')).toBeTruthy();
   expect(within(table).queryByText('Bob')).toBeNull();
+});
+
+test('archives the selected class with a chosen school year after confirmation', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  mount('/admin/classes?class=First');
+  fireEvent.change(await screen.findByLabelText('School year or archive label'), { target: { value: '2025–2026' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Archive class and students' }));
+  await waitFor(() => expect(archiveClass).toHaveBeenCalledWith({ className: 'First', label: '2025–2026', archivedBy: 'teacher' }));
 });

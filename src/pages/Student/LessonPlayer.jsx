@@ -13,6 +13,10 @@ import LessonQuiz from '../../components/quiz/LessonQuiz';
 export default function LessonPlayer() {
   const { courseId, lessonId } = useParams();
   const { user, basePath, readOnly } = useStudentView();
+  return <LessonSession key={JSON.stringify([user.uid, courseId, lessonId, readOnly])} {...{ courseId, lessonId, user, basePath, readOnly }} />;
+}
+
+function LessonSession({ courseId, lessonId, user, basePath, readOnly }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [savingVideo, setSavingVideo] = useState(false);
@@ -60,6 +64,7 @@ export default function LessonPlayer() {
       await updateAssignmentStatus(user.uid, courseId, nextProgress.percentComplete >= 100 ? 'completed' : 'in_progress');
     } catch (err) {
       setError(err.message || 'Unable to save video completion.');
+      throw err;
     } finally {
       setSavingVideo(false);
     }

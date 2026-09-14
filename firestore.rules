@@ -20,7 +20,9 @@ service cloud.firestore {
 
     function isAssigned(courseId) {
       return signedIn()
-        && exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + courseId));
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('archived', false) == false
+        && exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + courseId))
+        && get(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + courseId)).data.get('archived', false) == false;
     }
 
     function coursePublished(courseId) {
@@ -30,11 +32,14 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid) && request.resource.data.role == 'student';
+      allow create: if isOwner(uid) && request.resource.data.role == 'student'
+        && request.resource.data.get('archived', false) == false
+        && !('archiveId' in request.resource.data);
       allow update: if isAdmin()
         || (isOwner(uid)
           && request.resource.data.role == resource.data.role
-          && request.resource.data.uid == resource.data.uid);
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'lastLoginAt']));
       allow delete: if false;
     }
 
@@ -88,6 +93,21 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function archiveMember(archiveId) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/classArchives/$(archiveId)).data.studentIds;
+    }
+
+    match /classArchives/{archiveId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid in resource.data.studentIds);
+      allow create, update: if isAdmin();
+      match /{collection}/{document} {
+        allow read: if isAdmin() || (archiveMember(archiveId)
+          && ((collection in ['courses', 'lessons'] && request.auth.uid in resource.data.studentIds)
+            || (collection in ['users', 'assignments', 'progress', 'attempts'] && resource.data.uid == request.auth.uid)));
+        allow create, update: if isAdmin();
+      }
+    }
+
     match /attempts/{attemptId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn()
@@ -97,7 +117,8 @@ service cloud.firestore {
         && request.resource.data.totalQuestions > 0
         && request.resource.data.scorePercent >= 0
         && request.resource.data.scorePercent <= 100;
-      allow update, delete: if false;
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['archived', 'archiveId']);
+      allow delete: if false;
     }
   }
 }

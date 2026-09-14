@@ -1,7 +1,8 @@
+import { archiveClass } from '../../services/archiveService';
 import ClassAssignmentReport from '../../components/admin/ClassAssignmentReport';
 import { listAllProgress } from '../../services/progressService';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClipboardPlus, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { listUsers } from '../../services/adminService';
@@ -17,6 +18,8 @@ export default function Classes() {
 
 function ClassPage({ className, onOpenClass }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [archiveLabel, setArchiveLabel] = useState(() => { const now = new Date(); const year = now.getFullYear() - (now.getMonth() < 6 ? 1 : 0); return `${year}–${year + 1}`; });
   const [data, setData] = useState(null);
   const [courseIds, setCourseIds] = useState([]);
   const [dueDate, setDueDate] = useState('');
@@ -68,6 +71,15 @@ function ClassPage({ className, onOpenClass }) {
     }
   };
 
+  const archive = async () => {
+    if (busy || !students.length || !archiveLabel.trim()) return;
+    if (!window.confirm(`Archive ${className || 'Unassigned'} and its ${students.length} students for ${archiveLabel}? Their courses and results will remain available in Archive. They will leave the active lists until reactivated.`)) return;
+    setBusy(true); setError('');
+    try { const id = await archiveClass({ className, label: archiveLabel.trim(), archivedBy: user.uid }); navigate(`/admin/archives?archive=${encodeURIComponent(id)}`); }
+    catch (err) { setError(`${err.message} Open Archived classes to finish any incomplete archive.`); }
+    finally { setBusy(false); }
+  };
+
   const removeAssignments = async (items, description) => {
     if (busy || !items.length) return;
     if (!window.confirm(`Remove ${description} (${items.length} assignment${items.length === 1 ? '' : 's'})? Progress and quiz history will be kept.`)) return;
@@ -98,6 +110,7 @@ function ClassPage({ className, onOpenClass }) {
       <p className="text-xs font-black uppercase tracking-[.18em] text-amber-600">Class management</p>
       {className !== null && <button type="button" disabled={busy} onClick={() => onOpenClass(null)} className="mt-3 font-bold text-amber-700">← All classes</button>}
       <h1 className="mt-2 text-4xl font-black">{className === null ? 'Classes' : className || 'Unassigned'}</h1>
+      <Link to="/admin/archives" className="hive-secondary-button mt-4">Archived classes</Link>
       <p className="mt-2 text-slate-500">Open a class to view its students and assign trainings to everyone at once.</p>
       {!data && !error && <p className="mt-6">Loading classes…</p>}
       {data && !classOptions.length && <div className="hive-panel mt-6 p-6"><p>No students have signed in yet.</p><Link to="/admin/users" className="hive-secondary-button mt-4">Manage class membership</Link></div>}
@@ -128,6 +141,7 @@ function ClassPage({ className, onOpenClass }) {
           <button type="button" disabled={busy || !courseIds.length || !students.length} onClick={assign} className="hive-primary-button mt-5"><ClipboardPlus size={18} />{busy ? 'Assigning…' : `Assign ${courseIds.length} training${courseIds.length === 1 ? '' : 's'} to ${students.length} student${students.length === 1 ? '' : 's'}`}</button>
         </section>
       </div>}
+      {className !== null && data && students.length > 0 && <section className="hive-panel mt-7 p-6"><h2 className="text-2xl font-black">Archive this class</h2><p className="mt-2 text-sm text-slate-500">Save this roster, courses, progress, and quiz results for later. Students can revisit their old courses from their Archive tab. Reactivate returning students when you are ready to place them in a new class.</p><label className="mt-4 block max-w-sm"><span className="hive-label">School year or archive label</span><input className="hive-input" value={archiveLabel} onChange={event => setArchiveLabel(event.target.value)} disabled={busy} /></label><button disabled={busy || !archiveLabel.trim()} className="hive-secondary-button mt-4" onClick={archive}>{busy ? 'Working…' : 'Archive class and students'}</button></section>}
       {data && classOptions.length > 0 && className === null && <p className="mt-7 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Select a class above to get started.</p>}
     </div>
   );

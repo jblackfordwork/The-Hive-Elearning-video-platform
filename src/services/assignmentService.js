@@ -18,6 +18,8 @@ export async function assignCourse({ uid, courseId, assignedBy, dueDate = null }
     assignedAt: serverTimestamp(),
     dueDate: dueDate || null,
     status: 'assigned',
+    archived: false,
+    archiveId: null,
   }, { merge: true });
   return id;
 }
@@ -38,13 +40,13 @@ export async function updateAssignmentStatus(uid, courseId, status) {
 export async function listAssignmentsForUser(uid) {
   requireDb();
   const snapshot = await db.collection('assignments').where('uid', '==', uid).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(row => !row.archived);
 }
 
 export async function listAllAssignments() {
   requireDb();
   const snapshot = await db.collection('assignments').get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(row => !row.archived);
 }
 
 export async function assignTrainingsToUsers({ userIds, courseIds, assignedBy, dueDate = null }) {
@@ -57,7 +59,7 @@ export async function assignTrainingsToUsers({ userIds, courseIds, assignedBy, d
       const ref = db.collection('assignments').doc(assignmentId(uid, courseId));
       return db.runTransaction(async transaction => {
         const existing = await transaction.get(ref);
-        if (existing.exists) return 'skipped';
+        if (existing.exists && !existing.data().archived) return 'skipped';
         transaction.set(ref, { uid, courseId, assignedBy, assignedAt: serverTimestamp(), dueDate, status: 'assigned' });
         return 'created';
       });

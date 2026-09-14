@@ -1,5 +1,5 @@
 export function addPlaybackSeconds({ watchedSeconds = 0, elapsedSeconds = 0, durationSeconds = 0 }) {
-  const next = Math.max(0, Math.round(Number(watchedSeconds || 0) + Number(elapsedSeconds || 0)));
+  const next = Math.max(0, Number(watchedSeconds || 0) + Number(elapsedSeconds || 0));
   const duration = Math.round(Number(durationSeconds || 0));
   return duration > 0 ? Math.min(next, duration) : next;
 }

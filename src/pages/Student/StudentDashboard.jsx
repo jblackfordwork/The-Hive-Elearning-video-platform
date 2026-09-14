@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
 import { useStudentView } from '../../hooks/useStudentView';
 import { listAssignmentsForUser } from '../../services/assignmentService';
@@ -9,7 +10,7 @@ import CourseCard from '../../components/course/CourseCard';
 import EmptyState from '../../components/ui/EmptyState';
 
 export default function StudentDashboard() {
-  const { user, profile } = useStudentView();
+  const { user, profile, basePath } = useStudentView();
   const [items, setItems] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(true);
@@ -19,6 +20,7 @@ export default function StudentDashboard() {
     let active = true;
     async function load() {
       try {
+        if (profile?.archived) { setItems([]); return; }
         const [assignments, progressList] = await Promise.all([listAssignmentsForUser(user.uid), listProgressForUser(user.uid)]);
         const courses = await getCoursesByIds(assignments.map((assignment) => assignment.courseId));
         const courseMap = Object.fromEntries(courses.map((course) => [course.id, course]));
@@ -33,7 +35,7 @@ export default function StudentDashboard() {
     }
     load();
     return () => { active = false; };
-  }, [user.uid]);
+  }, [user.uid, profile?.archived]);
 
   const grouped = splitCoursesByCompletion(items);
   const visibleItems = activeTab === 'completed' ? grouped.completed : grouped.active;
@@ -50,9 +52,10 @@ export default function StudentDashboard() {
         </div>
       </section>
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-300"><GraduationCap /></div><div><h2 className="text-2xl font-black">My Training</h2><p className="text-sm text-slate-500">Your assigned Hive equipment courses</p></div></div><div className="inline-flex rounded-xl border border-slate-200 bg-white p-1"><button type="button" onClick={() => setActiveTab('active')} className={`rounded-lg px-4 py-2 text-sm font-black ${activeTab === 'active' ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>Active ({grouped.active.length})</button><button type="button" onClick={() => setActiveTab('completed')} className={`rounded-lg px-4 py-2 text-sm font-black ${activeTab === 'completed' ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>Completed ({grouped.completed.length})</button></div></div>
+      {profile?.archived && <div className="hive-panel mt-6 p-6">Your previous class has been archived. <Link className="font-bold text-amber-700" to={`${basePath || ''}/archives`}>Open your Archive</Link> to revisit courses and results. Your instructor can reactivate you for a new class.</div>}
       {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">{visibleItems.map((item) => <CourseCard key={item.assignment.id} {...item} />)}</div>
-      {!items.length && !error && <div className="mt-6"><EmptyState title="No training assigned yet" description="When an administrator assigns an equipment course to you, it will appear here automatically." /></div>}
+      {!profile?.archived && !items.length && !error && <div className="mt-6"><EmptyState title="No training assigned yet" description="When an administrator assigns an equipment course to you, it will appear here automatically." /></div>}
       {items.length > 0 && !visibleItems.length && !error && <div className="mt-6"><EmptyState title={activeTab === 'active' ? 'No active courses' : 'No completed courses yet'} description={activeTab === 'active' ? 'Finished courses move to the Completed tab automatically.' : 'Courses appear here after every lesson is complete.'} /></div>}
     </div>
   );

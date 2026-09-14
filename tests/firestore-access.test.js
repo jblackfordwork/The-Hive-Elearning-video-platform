@@ -82,3 +82,31 @@ test('student cannot access another student progress or an unassigned course', a
   await assertFails(getDocs(collection(db, 'progress')));
   await assertSucceeds(getDocs(query(collection(db, 'progress'), where('uid', '==', 'outsider-student'))));
 });
+
+test('archived students can review only their own archive and cannot change history or resume active training', async () => {
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    for (const [path, data] of Object.entries({
+      'users/alumni': { uid: 'alumni', role: 'student', archived: true },
+      'assignments/alumni_first-course': { uid: 'alumni', courseId: 'first-course', archived: true },
+      'classArchives/year': { studentIds: ['alumni'], status: 'complete' },
+      'classArchives/year/progress/own': { uid: 'alumni', percentComplete: 100 },
+      'classArchives/year/progress/other': { uid: 'someone', percentComplete: 50 },
+      'classArchives/year/lessons/intro': { title: 'Old lesson', studentIds: ['alumni'] },
+      'classArchives/year/lessons/private': { title: 'Classmate lesson', studentIds: ['someone'] },
+    })) await setDoc(doc(db, path), data);
+  });
+  const db = studentDb('alumni');
+  await assertSucceeds(getDocs(query(collection(db, 'classArchives'), where('studentIds', 'array-contains', 'alumni'))));
+  await assertSucceeds(getDocs(query(collection(db, 'classArchives/year/progress'), where('uid', '==', 'alumni'))));
+  await assertSucceeds(getDoc(doc(db, 'classArchives/year/lessons/intro')));
+  await assertFails(getDoc(doc(db, 'classArchives/year/progress/other')));
+  await assertFails(getDoc(doc(db, 'classArchives/year/lessons/private')));
+  await assertSucceeds(getDocs(query(collection(db, 'classArchives/year/lessons'), where('studentIds', 'array-contains', 'alumni'))));
+  await assertFails(getDoc(doc(studentDb('outsider'), 'classArchives/year/lessons/intro')));
+  await assertFails(updateDoc(doc(db, 'classArchives/year/progress/own'), { percentComplete: 0 }));
+  await assertFails(updateDoc(doc(db, 'users/alumni'), { archived: false }));
+  await assertFails(getDoc(doc(db, 'courses/first-course')));
+  await assertFails(setDoc(doc(db, 'progress/alumni_first-course'), { uid: 'alumni', courseId: 'first-course' }));
+  await assertSucceeds(updateDoc(doc(db, 'users/alumni'), { lastLoginAt: new Date() }));
+});

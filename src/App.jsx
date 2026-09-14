@@ -1,3 +1,4 @@
+import Archives from './pages/Archive/Archives';
 import Classes from './pages/Admin/Classes';
 import StudentPreview from './components/admin/StudentPreview';
 import StudentViewPicker from './pages/Admin/StudentViewPicker';
@@ -26,10 +27,12 @@ export default function App() {
       <Route path="/setup" element={<FirebaseSetup />} />
       <Route element={<RequireAuth><AppShell /></RequireAuth>}>
         <Route index element={<StudentDashboard />} />
+        <Route path="archives" element={<Archives />} />
         <Route path="course/:courseId" element={<CourseOverview />} />
         <Route path="course/:courseId/lesson/:lessonId" element={<LessonPlayer />} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="admin/student-view" element={<RequireAdmin><StudentViewPicker /></RequireAdmin>} />
+        <Route path="admin/archives" element={<RequireAdmin><Archives admin /></RequireAdmin>} />
         <Route path="admin/classes" element={<RequireAdmin><Classes /></RequireAdmin>} />
         <Route path="admin/students" element={<RequireAdmin><Students /></RequireAdmin>} />
         <Route path="admin/students/:uid" element={<RequireAdmin><StudentDetail /></RequireAdmin>} />
@@ -41,6 +44,7 @@ export default function App() {
       </Route>
       <Route path="student-view/:uid" element={<RequireAdmin><StudentPreview /></RequireAdmin>}>
         <Route index element={<StudentDashboard />} />
+        <Route path="archives" element={<Archives />} />
         <Route path="course/:courseId" element={<CourseOverview />} />
         <Route path="course/:courseId/lesson/:lessonId" element={<LessonPlayer />} />
       </Route>

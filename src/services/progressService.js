@@ -31,7 +31,7 @@ function emptyProgress(uid, courseId) {
 export async function getProgress(uid, courseId) {
   requireDb();
   const snapshot = await db.collection('progress').doc(progressId(uid, courseId)).get();
-  return snapshot.exists ? { id: snapshot.id, ...snapshot.data() } : emptyProgress(uid, courseId);
+  return snapshot.exists && !snapshot.data().archived ? { id: snapshot.id, ...snapshot.data() } : emptyProgress(uid, courseId);
 }
 
 async function writeProgress(uid, courseId, nextProgress) {
@@ -39,16 +39,18 @@ async function writeProgress(uid, courseId, nextProgress) {
   const existing = await ref.get();
   const payload = {
     ...nextProgress,
+    archived: false,
+    archiveId: null,
     uid,
     courseId,
     updatedAt: serverTimestamp(),
   };
-  if (!existing.exists) payload.startedAt = serverTimestamp();
-  await ref.set(payload, { merge: true });
+  if (!existing.exists || existing.data().archived) payload.startedAt = serverTimestamp();
+  await ref.set(payload);
   return payload;
 }
 
-export async function markVideoCompleted({ uid, courseId, lessonId, lessonIds = [], requireQuiz = true }) {
+async function markVideoCompletedNow({ uid, courseId, lessonId, lessonIds = [], requireQuiz = true }) {
   requireDb();
   const progress = await getProgress(uid, courseId);
   const previous = progress.lessons?.[lessonId] || {};
@@ -75,11 +77,11 @@ export async function markVideoCompleted({ uid, courseId, lessonId, lessonIds = 
   });
 }
 
-export async function recordVideoWatchProgress({ uid, courseId, lessonId, watchedSeconds = 0, durationSeconds = 0 }) {
+async function recordVideoWatchProgressNow({ uid, courseId, lessonId, watchedSeconds = 0, durationSeconds = 0 }) {
   requireDb();
   const progress = await getProgress(uid, courseId);
   const previous = progress.lessons?.[lessonId] || {};
-  const nextWatchedSeconds = Math.max(Number(previous.watchedSeconds || 0), Math.round(Number(watchedSeconds || 0)));
+  const nextWatchedSeconds = Math.max(Number(previous.watchedSeconds || 0), Number(watchedSeconds || 0));
   const nextDurationSeconds = Math.max(Number(previous.videoDurationSeconds || 0), Math.round(Number(durationSeconds || 0)));
 
   return writeProgress(uid, courseId, {
@@ -100,7 +102,7 @@ export async function recordVideoWatchProgress({ uid, courseId, lessonId, watche
   });
 }
 
-export async function recordQuizProgress({ uid, courseId, lessonId, lessonIds = [], lessons = [], result }) {
+async function recordQuizProgressNow({ uid, courseId, lessonId, lessonIds = [], lessons = [], result }) {
   requireDb();
   const progress = await getProgress(uid, courseId);
   const previous = progress.lessons?.[lessonId] || {};
@@ -140,13 +142,13 @@ export async function recordQuizProgress({ uid, courseId, lessonId, lessonIds = 
 export async function listAllProgress() {
   requireDb();
   const snapshot = await db.collection('progress').get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(row => !row.archived);
 }
 
 export async function listProgressForUser(uid) {
   requireDb();
   const snapshot = await db.collection('progress').where('uid', '==', uid).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(row => !row.archived);
 }
 
 export async function resetCourseProgress(uid, courseId) {
@@ -162,4 +164,28 @@ export async function resetStudentLessonProgress({ uid, courseId, lessonId, less
   const savedProgress = await writeProgress(uid, courseId, nextProgress);
   await updateAssignmentStatus(uid, courseId, savedProgress.percentComplete >= 100 ? 'completed' : 'in_progress');
   return savedProgress;
+}
+
+// Serialize read-modify-write operations across lesson changes in this tab.
+const pendingProgressWrites = new Map();
+function queueProgressWrite(input, write) {
+  const key = JSON.stringify([input.uid, input.courseId]);
+  const previous = pendingProgressWrites.get(key) || Promise.resolve();
+  const next = previous.catch(() => {}).then(() => write(input));
+  pendingProgressWrites.set(key, next);
+  const clear = () => { if (pendingProgressWrites.get(key) === next) pendingProgressWrites.delete(key); };
+  next.then(clear, clear);
+  return next;
+}
+
+export function markVideoCompleted(input) {
+  return queueProgressWrite(input, markVideoCompletedNow);
+}
+
+export function recordVideoWatchProgress(input) {
+  return queueProgressWrite(input, recordVideoWatchProgressNow);
+}
+
+export function recordQuizProgress(input) {
+  return queueProgressWrite(input, recordQuizProgressNow);
 }

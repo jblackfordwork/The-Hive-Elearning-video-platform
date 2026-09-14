@@ -1,16 +1,18 @@
 import { useStudentView } from '../../hooks/useStudentView';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { BookOpenCheck, ClipboardList, GraduationCap, LayoutDashboard, LogOut, ShieldCheck, Store, Users } from 'lucide-react';
+import { Archive, BookOpenCheck, ClipboardList, GraduationCap, LayoutDashboard, LogOut, ShieldCheck, Store, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import hiveLogoUrl from '../../../Hive Logo.svg';
 
 const studentNav = [
-  { to: '/', label: 'My Training', icon: GraduationCap },
+  { to: '/', label: 'My Training', icon: GraduationCap, end: true },
+  { to: '/archives', label: 'Archive', icon: Archive },
 ];
 const adminNav = [
   { to: '/admin/student-view', label: 'Student view', icon: GraduationCap },
   { to: '/admin', label: 'Admin Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/classes', label: 'Classes', icon: Users },
+  { to: '/admin/archives', label: 'Archived classes', icon: Archive },
   { to: '/admin/students', label: 'Students', icon: Users },
   { to: '/admin/courses', label: 'Courses', icon: BookOpenCheck },
   { to: '/admin/assignments', label: 'Assignments', icon: ClipboardList },
@@ -29,7 +31,7 @@ function NavItem({ item }) {
 export default function AppShell() {
   const { isAdmin, signOutUser } = useAuth();
   const { profile, user, readOnly, basePath } = useStudentView();
-  const trainingNav = studentNav.map(item => ({ ...item, to: basePath || '/' }));
+  const trainingNav = studentNav.map(item => ({ ...item, to: item.to === '/' ? basePath || '/' : `${basePath}${item.to}` }));
   const navItems = isAdmin && !readOnly ? [...trainingNav, ...adminNav] : trainingNav;
   const name = profile?.displayName || user?.displayName || 'Hive Learner';
 

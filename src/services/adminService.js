@@ -4,11 +4,12 @@ function requireDb() {
   if (!db) throw new Error('Firebase is not configured.');
 }
 
-export async function listUsers() {
+export async function listUsers({ includeArchived = false } = {}) {
   requireDb();
   const snapshot = await db.collection('users').get();
   return snapshot.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter(user => includeArchived || !user.archived)
     .sort((a, b) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''));
 }
 
